@@ -185,6 +185,7 @@ Promise.all([landReady, lionReady]).then(([_, lion]) => {
 
 // ─── 인터랙션: 카메라 고정. 좌클릭/한손가락→지구 회전. 휠/핀치→줌. 우클릭·Shift+좌·두손가락→팬.
 //      자전·사용자 회전 모두 earth 자체를 회전 → 조명은 항상 절대 위치 고정.
+//      여백(지구 아닌 빈 공간) 단순 탭/클릭 → 풀샷 리셋 + 자전 재개.
 const _earthQ = new THREE.Quaternion();
 const _pointers = new Map();    // pointerId → {x, y}
 let _isRot = false, _rotPrevX = 0, _rotPrevY = 0;
@@ -192,9 +193,30 @@ let _isPan = false, _panPrevX = 0, _panPrevY = 0;
 let _isMulti = false;
 let _multiStartDist = 0, _multiStartMidX = 0, _multiStartMidY = 0;
 let _multiStartCamZ = 0, _multiStartViewOX = 0, _multiStartViewOY = 0;
+let _downX = 0, _downY = 0, _downHitEarth = false;
 let viewOX = 0, viewOY = 0;
 let autoRotate = true;
 const ROTATE_SENS = 0.006;
+const TAP_THRESHOLD = 8;        // px — 이동량이 이보다 작으면 탭/클릭으로 간주
+
+const _raycaster = new THREE.Raycaster();
+const _ndc = new THREE.Vector2();
+function isEarthHit(clientX, clientY) {
+  const rect = canvas.getBoundingClientRect();
+  _ndc.x = ((clientX - rect.left) / rect.width) * 2 - 1;
+  _ndc.y = -((clientY - rect.top) / rect.height) * 2 + 1;
+  _raycaster.setFromCamera(_ndc, camera);
+  return _raycaster.intersectObject(earth, false).length > 0;
+}
+
+function resetView() {
+  camera.position.set(0, 0, 5.5);
+  viewOX = 0; viewOY = 0;
+  applyViewOffset();
+  _earthQ.identity();
+  earth.quaternion.copy(_earthQ);
+  autoRotate = true;             // 자전 재개
+}
 
 function applyViewOffset() {
   if (viewOX === 0 && viewOY === 0) camera.clearViewOffset();
@@ -207,6 +229,12 @@ canvas.addEventListener('pointerdown', e => {
   e.preventDefault();
   _pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
   try { canvas.setPointerCapture(e.pointerId); } catch {}
+
+  // 첫 포인터일 때만 탭 판정용 시작 위치·hit 기록
+  if (_pointers.size === 1) {
+    _downX = e.clientX; _downY = e.clientY;
+    _downHitEarth = isEarthHit(e.clientX, e.clientY);
+  }
 
   // 두 손가락(터치) 진입 → 핀치 줌 + 팬 모드 시작, 단일 모드 종료
   if (e.pointerType === 'touch' && _pointers.size === 2) {
@@ -273,6 +301,12 @@ function endPointer(e) {
   if (_pointers.size === 0) {
     _isRot = false; _isPan = false;
     canvas.style.cursor = 'grab';
+    // 단순 탭/클릭 + 지구 미스 → 풀샷 리셋
+    const dx = e.clientX - _downX;
+    const dy = e.clientY - _downY;
+    if (!_downHitEarth && Math.hypot(dx, dy) < TAP_THRESHOLD) {
+      resetView();
+    }
   } else if (_pointers.size === 1 && !_isMulti) {
     // 두 손가락 → 한 손가락 으로 줄었을 때 회전 모드로 재시작
     const last = [..._pointers.values()][0];
