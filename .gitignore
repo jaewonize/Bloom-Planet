@@ -1,0 +1,17 @@
+# 사용되지 않는 대용량 임시 파일
+lion.glb
+lion_small_b64.txt
+
+# OS / 에디터
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*~
+
+# Claude Code 개인 설정 (settings.json 만 공유)
+.claude/settings.local.json
+
+# 로컬 서버 캐시 등
+__pycache__/
+*.pyc
