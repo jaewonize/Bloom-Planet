@@ -17,6 +17,7 @@ body {
   min-height: 100vh;
   padding: 24px 32px;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.3;
 }
 main {
   flex: 1;
@@ -31,7 +32,7 @@ main {
   left: 33px;
   font-size: 28px;
   font-weight: 700;
-  color: #78DCAA;
+  color: #73CCA3;
   letter-spacing: -0.01em;
   z-index: 3;
   pointer-events: none;
@@ -72,19 +73,19 @@ canvas:active { cursor:grabbing; }
   gap: 4px;
 }
 .card .name { font-size: 13px; color: #666; font-weight: 600; }
-.card .score { font-size: 26px; color: #78DCAA; font-weight: 700; line-height: 1.1; }
+.card .score { font-size: 26px; color: #73CCA3; font-weight: 700; line-height: 1.1; }
 
 #sliders {
   width: 384px;
   height: 768px;
   background: #ffffff;
   border-radius: 0 40px 40px 0;
-  padding: 100px 28px 28px 56px;
+  padding: 90px 28px 28px 56px;
   box-shadow: 0 20px 60px rgba(0,0,0,0.08);
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
-  gap: 28px;
+  gap: 20px;
   margin-left: -32px;
   position: relative;
   z-index: 1;
@@ -94,16 +95,17 @@ canvas:active { cursor:grabbing; }
   font-size: 16px;
   color: #888;
   font-weight: 500;
+  margin-top: 5px;
   margin-bottom: 4px;
   letter-spacing: 0.02em;
 }
-.slider-row { display: flex; flex-direction: column; gap: 10px; }
+.slider-row { display: flex; flex-direction: column; gap: 6px; }
 .slider-row .label-row {
   display: flex; justify-content: space-between; align-items: baseline;
-  font-size: 15px; color: #78DCAA;
+  font-size: 15px; color: #73CCA3;
 }
-.slider-row .label { font-weight: 600; color: #78DCAA; }
-.slider-row .value { font-variant-numeric: tabular-nums; color: #78DCAA; font-size: 14px; font-weight: 600; }
+.slider-row .label { font-weight: 600; color: #73CCA3; }
+.slider-row .value { font-variant-numeric: tabular-nums; color: #73CCA3; font-size: 14px; font-weight: 600; }
 .slider-row input[type="range"] {
   -webkit-appearance: none; appearance: none;
   width: 100%; height: 8px; border-radius: 4px;
@@ -112,34 +114,37 @@ canvas:active { cursor:grabbing; }
 .slider-row input[type="range"]::-webkit-slider-thumb {
   -webkit-appearance: none; appearance: none;
   width: 20px; height: 20px; border-radius: 50%;
-  background: #78DCAA; cursor: pointer;
+  background: #73CCA3; cursor: pointer;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 .slider-row input[type="range"]::-moz-range-thumb {
   width: 20px; height: 20px; border-radius: 50%;
-  background: #78DCAA; cursor: pointer; border: none;
+  background: #73CCA3; cursor: pointer; border: none;
   box-shadow: 0 2px 6px rgba(0,0,0,0.2);
 }
 
 #submit-btn {
   margin-top: 2px;
-  padding: 14px 36px;
+  padding: 10px 32px;
   border-radius: 999px;
-  background: #78DCAA;
+  background: #73CCA3;
   color: #ffffff;
   font-size: 16px;
   font-weight: 700;
+  line-height: 1.2;
   border: none;
   cursor: pointer;
   align-self: center;
-  box-shadow: 0 4px 12px rgba(120, 220, 170, 0.4);
+  box-shadow: 0 4px 12px rgba(115, 204, 163, 0.4);
   transition: transform 0.1s ease, box-shadow 0.1s ease;
   letter-spacing: 0.02em;
+  font-family: inherit;
 }
-#submit-btn:hover { box-shadow: 0 6px 16px rgba(120, 220, 170, 0.5); }
+#submit-btn:hover { box-shadow: 0 6px 16px rgba(115, 204, 163, 0.5); }
 #submit-btn:active { transform: scale(0.97); }
 
 #triggers {
+  margin-top: -10px;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -157,19 +162,20 @@ canvas:active { cursor:grabbing; }
   gap: 12px;
 }
 .trigger-btn {
-  padding: 8px 18px;
+  padding: 5px 14px;
   border-radius: 999px;
   background: transparent;
-  color: #78DCAA;
+  color: #73CCA3;
   font-size: 13px;
   font-weight: 600;
-  border: 1px solid #78DCAA;
+  line-height: 1.2;
+  border: 1px solid #73CCA3;
   cursor: pointer;
   transition: background 0.1s ease;
   white-space: nowrap;
   font-family: inherit;
 }
-.trigger-btn:hover { background: rgba(120, 220, 170, 0.12); }
+.trigger-btn:hover { background: rgba(115, 204, 163, 0.12); }
 .trigger-btn:active { transform: scale(0.97); }
 </style>
 </head>
@@ -539,7 +545,7 @@ const cardEls = {};
 function paintSlider(slider) {
   const v = parseInt(slider.value, 10);
   slider.style.background =
-    `linear-gradient(to right, #B5EBD0 0%, #B5EBD0 ${v}%, #e0e0e0 ${v}%, #e0e0e0 100%)`;
+    `linear-gradient(to right, #B2E0C9 0%, #B2E0C9 ${v}%, #e0e0e0 ${v}%, #e0e0e0 100%)`;
 }
 sliderConfig.forEach(({ id, valueId, cardId }) => {
   const slider = document.getElementById('slider-' + id);
