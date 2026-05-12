@@ -8,37 +8,220 @@
 * { margin:0; padding:0; box-sizing:border-box; }
 html, body {
   height: 100%;
-  overflow: hidden;            /* 페이지 자체 스크롤 차단 */
-  overscroll-behavior: none;   /* iOS bounce 차단 */
+  overflow: hidden;
+  overscroll-behavior: none;
 }
 body {
-  background: #e0e0e0;
-  display: flex; align-items: center; justify-content: center;
+  background: #DBE9DF;
+  display: flex; flex-direction: column;
   min-height: 100vh;
+  padding: 24px 32px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+main {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translateY(-20px);
+}
+#phone-title {
+  position: absolute;
+  top: 25px;
+  left: 33px;
+  font-size: 28px;
+  font-weight: 700;
+  color: #78DCAA;
+  letter-spacing: -0.01em;
+  z-index: 3;
+  pointer-events: none;
 }
 #canvas-wrap {
-  width: 360px; height: 640px;
-  max-width: 100vw; max-height: 100vh;   /* 모바일에서 viewport 안에 갇히게 */
+  width: 384px; height: 768px;
   background: #ffffff;
   border-radius: 40px;
   overflow: hidden;
-  display: flex; align-items: center; justify-content: center;
   box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  touch-action: none;          /* 터치 제스처가 페이지 스크롤로 가로채지지 않게 */
+  touch-action: none;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
 }
 canvas { display:block; cursor:grab; touch-action: none; }
 canvas:active { cursor:grabbing; }
+
+#cards {
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 268px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 12px;
+  padding: 16px 24px 28px;
+  background: transparent;
+  z-index: 2;
+  pointer-events: none;
+}
+.card {
+  background: #f4f8f5;
+  border-radius: 16px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.card .name { font-size: 13px; color: #666; font-weight: 600; }
+.card .score { font-size: 26px; color: #78DCAA; font-weight: 700; line-height: 1.1; }
+
+#sliders {
+  width: 384px;
+  height: 768px;
+  background: #ffffff;
+  border-radius: 0 40px 40px 0;
+  padding: 100px 28px 28px 56px;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 28px;
+  margin-left: -32px;
+  position: relative;
+  z-index: 1;
+  flex-shrink: 0;
+}
+#sliders h2 {
+  font-size: 16px;
+  color: #888;
+  font-weight: 500;
+  margin-bottom: 4px;
+  letter-spacing: 0.02em;
+}
+.slider-row { display: flex; flex-direction: column; gap: 10px; }
+.slider-row .label-row {
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-size: 15px; color: #78DCAA;
+}
+.slider-row .label { font-weight: 600; color: #78DCAA; }
+.slider-row .value { font-variant-numeric: tabular-nums; color: #78DCAA; font-size: 14px; font-weight: 600; }
+.slider-row input[type="range"] {
+  -webkit-appearance: none; appearance: none;
+  width: 100%; height: 8px; border-radius: 4px;
+  background: #e0e0e0; outline: none;
+}
+.slider-row input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #78DCAA; cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+.slider-row input[type="range"]::-moz-range-thumb {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: #78DCAA; cursor: pointer; border: none;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+}
+
+#submit-btn {
+  margin-top: 2px;
+  padding: 14px 36px;
+  border-radius: 999px;
+  background: #78DCAA;
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  align-self: center;
+  box-shadow: 0 4px 12px rgba(120, 220, 170, 0.4);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  letter-spacing: 0.02em;
+}
+#submit-btn:hover { box-shadow: 0 6px 16px rgba(120, 220, 170, 0.5); }
+#submit-btn:active { transform: scale(0.97); }
+
+#triggers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#triggers h3 {
+  font-size: 16px;
+  color: #888;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+#trigger-buttons {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+.trigger-btn {
+  padding: 8px 18px;
+  border-radius: 999px;
+  background: transparent;
+  color: #78DCAA;
+  font-size: 13px;
+  font-weight: 600;
+  border: 1px solid #78DCAA;
+  cursor: pointer;
+  transition: background 0.1s ease;
+  white-space: nowrap;
+  font-family: inherit;
+}
+.trigger-btn:hover { background: rgba(120, 220, 170, 0.12); }
+.trigger-btn:active { transform: scale(0.97); }
 </style>
 </head>
 <body>
+<main>
 <div id="canvas-wrap">
-  <canvas id="globe" width="360" height="640"></canvas>
+  <div id="phone-title">Wellness Planet</div>
+  <canvas id="globe" width="384" height="768"></canvas>
+  <div id="cards">
+    <div class="card"><div class="name">잘 움직이기</div><div class="score" id="card-move">72</div></div>
+    <div class="card"><div class="name">잘 쉬기</div><div class="score" id="card-rest">60</div></div>
+    <div class="card"><div class="name">잘 가꾸기</div><div class="score" id="card-groom">48</div></div>
+    <div class="card"><div class="name">잘 다스리기</div><div class="score" id="card-manage">80</div></div>
+  </div>
 </div>
+
+<div id="sliders">
+  <h2>점수 컨트롤</h2>
+  <div class="slider-row">
+    <div class="label-row"><span class="label">잘 움직이기</span><span class="value" id="val-move">72</span></div>
+    <input type="range" min="0" max="100" value="72" id="slider-move">
+  </div>
+  <div class="slider-row">
+    <div class="label-row"><span class="label">잘 쉬기</span><span class="value" id="val-rest">60</span></div>
+    <input type="range" min="0" max="100" value="60" id="slider-rest">
+  </div>
+  <div class="slider-row">
+    <div class="label-row"><span class="label">잘 가꾸기</span><span class="value" id="val-groom">48</span></div>
+    <input type="range" min="0" max="100" value="48" id="slider-groom">
+  </div>
+  <div class="slider-row">
+    <div class="label-row"><span class="label">잘 다스리기</span><span class="value" id="val-manage">80</span></div>
+    <input type="range" min="0" max="100" value="80" id="slider-manage">
+  </div>
+  <button id="submit-btn">입력</button>
+  <div id="triggers">
+    <h3>트리거</h3>
+    <div id="trigger-buttons">
+      <button class="trigger-btn">100번째 방문</button>
+      <button class="trigger-btn">지난 한 달 간 미접속</button>
+      <button class="trigger-btn">할로윈 이벤트</button>
+      <button class="trigger-btn">동일연령 총점 평균보다 낮음</button>
+      <button class="trigger-btn">잘 다스리기 20점 하락</button>
+    </div>
+  </div>
+</div>
+</main>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script>
-const W = 360, H = 640;
+const W = 384, H = 768;
 const canvas = document.getElementById('globe');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(W, H);
@@ -49,9 +232,11 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff);
 
 const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
+const CAM_Z = 6.5;
+const CAM_Y = -0.71;
 const Z_MIN = 1.6;   // 최대 확대
 const Z_MAX = 5.5;   // 최대 축소
-camera.position.z = 5.5;
+camera.position.set(0, CAM_Y, CAM_Z);
 
 // 조명 — 모두 world 공간 고정. 균등한 base 광(ambient+hemi) + 약한 한 방향 sun.
 // 양쪽 sun 없음 → terminator 음영 띠 안 생김. 어디서 봐도 균등.
@@ -210,7 +395,7 @@ function isEarthHit(clientX, clientY) {
 }
 
 function resetView() {
-  camera.position.set(0, 0, 5.5);
+  camera.position.set(0, CAM_Y, CAM_Z);
   viewOX = 0; viewOY = 0;
   applyViewOffset();
   _earthQ.identity();
@@ -340,6 +525,43 @@ animate();
 
 // ─── (dev) 디버그용 외부 노출 ───
 window.__debug = { camera, scene, earth, earthQ: _earthQ };
+
+// ─── 슬라이더: 값 표시 동기화 ───
+// 슬라이더 조작은 draft 값만 갱신. '입력' 버튼을 눌러야 scores/카드에 반영됨.
+const sliderConfig = [
+  { id: 'move',   valueId: 'val-move',   cardId: 'card-move'   },
+  { id: 'rest',   valueId: 'val-rest',   cardId: 'card-rest'   },
+  { id: 'groom',  valueId: 'val-groom',  cardId: 'card-groom'  },
+  { id: 'manage', valueId: 'val-manage', cardId: 'card-manage' },
+];
+const scores = {};
+const cardEls = {};
+function paintSlider(slider) {
+  const v = parseInt(slider.value, 10);
+  slider.style.background =
+    `linear-gradient(to right, #B5EBD0 0%, #B5EBD0 ${v}%, #e0e0e0 ${v}%, #e0e0e0 100%)`;
+}
+sliderConfig.forEach(({ id, valueId, cardId }) => {
+  const slider = document.getElementById('slider-' + id);
+  const valueLabel = document.getElementById(valueId);
+  cardEls[id] = document.getElementById(cardId);
+  scores[id] = parseInt(slider.value, 10);
+  paintSlider(slider);
+  slider.addEventListener('input', () => {
+    valueLabel.textContent = slider.value;
+    paintSlider(slider);
+  });
+});
+
+function applyScores() {
+  sliderConfig.forEach(({ id }) => {
+    const slider = document.getElementById('slider-' + id);
+    scores[id] = parseInt(slider.value, 10);
+    cardEls[id].textContent = scores[id];
+  });
+}
+document.getElementById('submit-btn').addEventListener('click', applyScores);
+window.__scores = scores;
 </script>
 </body>
 </html>
