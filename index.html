@@ -226,6 +226,7 @@ canvas:active { cursor:grabbing; }
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <script>
 const W = 384, H = 768;
 const canvas = document.getElementById('globe');
@@ -237,11 +238,11 @@ renderer.setClearColor(0xffffff, 1);
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff);
 
-const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
-const CAM_Z = 6.5;
-const CAM_Y = -0.71;
-const Z_MIN = 1.6;   // 최대 확대
-const Z_MAX = 5.5;   // 최대 축소
+const camera = new THREE.PerspectiveCamera(25, W/H, 0.1, 100);
+const CAM_Z = 12;
+const CAM_Y = -0.72;
+const Z_MIN = 3;     // 최대 확대
+const Z_MAX = 10;    // 최대 축소
 camera.position.set(0, CAM_Y, CAM_Z);
 
 // 조명 — 모두 world 공간 고정. 균등한 base 광(ambient+hemi) + 약한 한 방향 sun.
@@ -340,8 +341,9 @@ const EARTH_R = 1.015;                       // displacement 고려한 표면 �
 const LION_SCALE = 0.18;
 
 const gltfLoader = new THREE.GLTFLoader();
+gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 const lionReady = new Promise((resolve, reject) => {
-  gltfLoader.load('assets/models/lion_small_nodraco.glb',
+  gltfLoader.load('assets/models/lion_optimized.glb',
     gltf => resolve(gltf.scene),
     undefined,
     err => reject(err));
