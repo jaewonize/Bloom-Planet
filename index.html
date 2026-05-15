@@ -234,6 +234,8 @@ const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(W, H);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.setClearColor(0xffffff, 1);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.VSMShadowMap;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0xffffff);
@@ -251,9 +253,20 @@ const ambient = new THREE.AmbientLight(0xffffff, 0.55);
 scene.add(ambient);
 const hemi = new THREE.HemisphereLight(0xffffff, 0x8a909a, 0.7);
 scene.add(hemi);
-// 약한 directional — 음영 살짝만 (입체감용).
+// 약한 directional — 음영 살짝만 (입체감용) + 매우 은은한 그림자.
 const sun = new THREE.DirectionalLight(0xfff4e0, 0.25);
 sun.position.set(3, 4, 5);
+sun.castShadow = true;
+sun.shadow.mapSize.set(1024, 1024);
+sun.shadow.camera.near = 0.1;
+sun.shadow.camera.far = 20;
+sun.shadow.camera.left = -2;
+sun.shadow.camera.right = 2;
+sun.shadow.camera.top = 2;
+sun.shadow.camera.bottom = -2;
+sun.shadow.bias = -0.0005;
+sun.shadow.radius = 8;
+sun.shadow.blurSamples = 16;
 scene.add(sun);
 
 // 텍스처
@@ -274,6 +287,7 @@ const mat = new THREE.MeshPhongMaterial({
   shininess: 1,
 });
 const earth = new THREE.Mesh(geo, mat);
+earth.receiveShadow = true;
 scene.add(earth);
 
 // 대기층
@@ -343,68 +357,44 @@ const LION_SCALE = 0.18;                     // 보상 모델 공통 스케일 (
 const gltfLoader = new THREE.GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
 
-// 8개 큰 파일 시각 품질 검증용 — 끝나면 단일 사자 로드 코드로 복원할 것
-const TEST_MODELS = [
-  'assets/models/glb_activity/zebra_pbr.glb',
-  'assets/models/glb_activity/peacock_pbr.glb',
-  'assets/models/glb_activity/ram_pbr.glb',
-  'assets/models/glb_mind/gothic_pbr.glb',
-  'assets/models/glb_mind/lotus_pbr.glb',
-  'assets/models/glb_mind/mayan_pbr.glb',
-  'assets/models/glb_restoration/willow_pbr.glb',
-  'assets/models/glb_restoration/cabin_pbr.glb',
-];
-// 지구 앞면에 격자처럼 배치 (위도, 경도 라디안)
-const TEST_POSITIONS = [
-  [ Math.PI/6, -Math.PI/3 ],
-  [ Math.PI/6,  0         ],
-  [ Math.PI/6,  Math.PI/3 ],
-  [ 0,         -Math.PI/2.5],
-  [ 0,          Math.PI/2.5],
-  [-Math.PI/6, -Math.PI/3 ],
-  [-Math.PI/6,  0         ],
-  [-Math.PI/6,  Math.PI/3 ],
-];
-function latLonToDir(lat, lon) {
-  return new THREE.Vector3(
-    Math.cos(lat) * Math.sin(lon),
-    Math.sin(lat),
-    Math.cos(lat) * Math.cos(lon)
-  );
-}
-const modelsReady = Promise.all(
-  TEST_MODELS.map(url =>
-    new Promise((resolve, reject) =>
-      gltfLoader.load(url, g => resolve(g.scene), undefined,
-        err => { console.error('로드 실패:', url, err); reject(err); }))
-  )
-);
+const PLACEMENT_R = 1.005;  // 보상 모델 발이 표면에 닿게 (1.015 surface 평균보다 살짝 안쪽)
 
-Promise.all([landReady, modelsReady]).then(([_, models]) => {
-  models.forEach((model, i) => {
-    model.traverse(o => {
-      if (o.isMesh && o.material && o.material.isMeshStandardMaterial) {
+const lionReady = new Promise((resolve, reject) => {
+  gltfLoader.load('assets/models/glb_activity/lion_pbr.glb',
+    gltf => resolve(gltf.scene),
+    undefined,
+    err => reject(err));
+});
+
+Promise.all([landReady, lionReady]).then(([_, lion]) => {
+  // GLB 머티리얼 보정 + 그림자 캐스팅
+  lion.traverse(o => {
+    if (o.isMesh) {
+      o.castShadow = true;
+      if (o.material && o.material.isMeshStandardMaterial) {
         o.material.metalness = 0;
         o.material.roughness = 0.7;
         o.material.needsUpdate = true;
       }
-    });
-    const box = new THREE.Box3().setFromObject(model);
-    const center = new THREE.Vector3(); box.getCenter(center);
-    model.position.set(-center.x, -box.min.y, -center.z);
-
-    const wrapper = new THREE.Group();
-    wrapper.add(model);
-    wrapper.scale.setScalar(LION_SCALE);
-
-    const [lat, lon] = TEST_POSITIONS[i];
-    const dir = latLonToDir(lat, lon);
-    wrapper.position.copy(dir).multiplyScalar(EARTH_R);
-    wrapper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-
-    earth.add(wrapper);
+    }
   });
-}).catch(err => console.error('테스트 모델 로드 실패:', err));
+
+  // 모델 원점이 발이 아닐 수 있으므로 bounding box로 발 정렬
+  const box = new THREE.Box3().setFromObject(lion);
+  const center = new THREE.Vector3(); box.getCenter(center);
+  lion.position.set(-center.x, -box.min.y, -center.z);
+
+  const wrapper = new THREE.Group();
+  wrapper.add(lion);
+  wrapper.scale.setScalar(LION_SCALE);
+
+  // 대륙 위에 랜덤 배치 (지구 자전과 함께 이동)
+  const dir = pickRandomLandDir();
+  wrapper.position.copy(dir).multiplyScalar(PLACEMENT_R);
+  wrapper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+  earth.add(wrapper);
+}).catch(err => console.error('사자 로드 실패:', err));
 
 // ─── 인터랙션: 카메라 고정. 좌클릭/한손가락→지구 회전. 휠/핀치→줌. 우클릭·Shift+좌·두손가락→팬.
 //      자전·사용자 회전 모두 earth 자체를 회전 → 조명은 항상 절대 위치 고정.
