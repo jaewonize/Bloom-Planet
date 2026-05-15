@@ -388,20 +388,41 @@ Promise.all([landReady, lionReady]).then(([_, lion]) => {
   wrapper.add(lion);
   wrapper.scale.setScalar(LION_SCALE);
 
-  // 대륙 위에 랜덤 배치 (지구 자전과 함께 이동)
-  const dir = pickRandomLandDir();
+  // 사자 기본 위치 = 아프리카 대륙 중앙 (적도 부근, 동경 ~20°)
+  // 표준 equirectangular 매핑 기준: u = (lon+180)/360, v = (90-lat)/180
+  const LION_LAT = 28;    // 위도 (도) — +north / -south
+  const LION_LON = 1;     // 경도 (도) — +east / -west
+  const lionU = (LION_LON + 180) / 360;
+  const lionV = (90 - LION_LAT) / 180;
+  const dir = uvToDir(lionU, lionV);
   wrapper.position.copy(dir).multiplyScalar(PLACEMENT_R);
   wrapper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+  wrapper.rotateY(Math.PI);  // 자전 방향과 일치하도록 facing 180° 회전
 
   earth.add(wrapper);
+
+  // 페이지 로드 시 지구 초기 회전 — 사자(아프리카)가 화면 왼쪽 가장자리에
+  // 살짝 보이고 정면엔 아시아·호주가 오도록.
+  // 0° = 사자 정면, -90° = 사자 화면 좌측 가장자리, +90° = 우측 가장자리
+  const LION_INITIAL_YAW_DEG = -75;
+  const lionYaw = Math.atan2(dir.x, dir.z);
+  const earthYaw = (LION_INITIAL_YAW_DEG * Math.PI / 180) - lionYaw;
+  _earthQInitial.setFromAxisAngle(new THREE.Vector3(0, 1, 0), earthYaw);
+  _earthQ.copy(_earthQInitial);
+  earth.quaternion.copy(_earthQ);
 }).catch(err => console.error('사자 로드 실패:', err));
 
 // ─── 인터랙션: 카메라 고정. 좌클릭/한손가락→지구 회전. 휠/핀치→줌. 우클릭·Shift+좌·두손가락→팬.
 //      자전·사용자 회전 모두 earth 자체를 회전 → 조명은 항상 절대 위치 고정.
 //      여백(지구 아닌 빈 공간) 단순 탭/클릭 → 풀샷 리셋 + 자전 재개.
 const _earthQ = new THREE.Quaternion();
+const _earthQInitial = new THREE.Quaternion();  // 페이지 로드 + reset 시 적용할 초기 회전
 const _pointers = new Map();    // pointerId → {x, y}
 let _isRot = false, _rotPrevX = 0, _rotPrevY = 0;
+let _velX = 0, _velY = 0;        // 스와이프 관성 속도 (pixels per ms)
+let _lastMoveT = 0;
+const FRICTION = 0.94;           // 프레임당 감속 비율 (낮을수록 빠른 정지)
+const VEL_STOP = 0.001;          // 정지 임계값
 let _isPan = false, _panPrevX = 0, _panPrevY = 0;
 let _isMulti = false;
 let _multiStartDist = 0, _multiStartMidX = 0, _multiStartMidY = 0;
@@ -426,9 +447,10 @@ function resetView() {
   camera.position.set(0, CAM_Y, CAM_Z);
   viewOX = 0; viewOY = 0;
   applyViewOffset();
-  _earthQ.identity();
+  _earthQ.copy(_earthQInitial);  // 페이지 로드 시와 동일한 초기 회전으로 복귀
   earth.quaternion.copy(_earthQ);
-  autoRotate = true;             // 자전 재개
+  _velX = 0; _velY = 0;          // 관성 잔재 제거
+  autoRotate = true;              // 자전 재개
 }
 
 function applyViewOffset() {
@@ -470,6 +492,8 @@ canvas.addEventListener('pointerdown', e => {
   } else {  // button 0 (좌클릭) 또는 터치
     _isRot = true;
     _rotPrevX = e.clientX; _rotPrevY = e.clientY;
+    _velX = 0; _velY = 0;
+    _lastMoveT = performance.now();
     canvas.style.cursor = 'grabbing';
   }
 });
@@ -505,6 +529,13 @@ window.addEventListener('pointermove', e => {
     _earthQ.premultiply(qX).premultiply(qY);
     earth.quaternion.copy(_earthQ);
     _rotPrevX = e.clientX; _rotPrevY = e.clientY;
+
+    // 관성용 속도 추적 — EMA(지수 이동 평균)로 jitter 평활화
+    const now = performance.now();
+    const dt = Math.max(now - _lastMoveT, 1);
+    _velX = _velX * 0.7 + (dx / dt) * 0.3;
+    _velY = _velY * 0.7 + (dy / dt) * 0.3;
+    _lastMoveT = now;
   }
 });
 
@@ -514,6 +545,7 @@ function endPointer(e) {
   if (_pointers.size === 0) {
     _isRot = false; _isPan = false;
     canvas.style.cursor = 'grab';
+    autoRotate = true;  // 어떤 조작 후에도 자전 재개 (현재 위치/줌 그대로)
     // 단순 탭/클릭 + 지구 미스 → 풀샷 리셋
     const dx = e.clientX - _downX;
     const dy = e.clientY - _downY;
@@ -541,12 +573,30 @@ const _spinQ = new THREE.Quaternion();
 const _yAxis = new THREE.Vector3(0, 1, 0);
 function animate() {
   requestAnimationFrame(animate);
-  if (autoRotate) {
-    // 자전: world +Y 축으로 작은 각도 회전. 사용자 회전과 같은 방식(premultiply).
+
+  // 자전 — 사용자 드래그 중이 아니면 항상 진행.
+  // multiply(local 공간): 지구의 local Y(= 남북 자전축) 기준으로 돔.
+  // 사용자가 지구를 기울여 놨어도 자전축은 지구 본인의 극을 통과.
+  if (autoRotate && !_isRot) {
     _spinQ.setFromAxisAngle(_yAxis, 0.003);
-    _earthQ.premultiply(_spinQ);
-    earth.quaternion.copy(_earthQ);
+    _earthQ.multiply(_spinQ);
   }
+
+  // 스와이프 관성 — 마우스 놓은 직후 잔존 속도가 있으면 감속하며 자전에 더해짐
+  if (!_isRot && (Math.abs(_velX) > VEL_STOP || Math.abs(_velY) > VEL_STOP)) {
+    const frameMs = 16.67;
+    const dx = _velX * frameMs;
+    const dy = _velY * frameMs;
+    const qY = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0,1,0), dx * ROTATE_SENS);
+    const qX = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(1,0,0), dy * ROTATE_SENS);
+    _earthQ.premultiply(qX).premultiply(qY);
+    _velX *= FRICTION;
+    _velY *= FRICTION;
+  } else if (!_isRot && (_velX !== 0 || _velY !== 0)) {
+    _velX = 0; _velY = 0;  // 임계값 이하 잔재 제거
+  }
+
+  earth.quaternion.copy(_earthQ);
   renderer.render(scene, camera);
 }
 animate();
