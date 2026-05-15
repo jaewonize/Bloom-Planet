@@ -338,43 +338,73 @@ function pickRandomLandDir() {
 
 // ─── 사자 (대륙 위에 랜덤 배치, 지구 회전과 함께 움직임) ───
 const EARTH_R = 1.015;                       // displacement 고려한 표면 반경
-const LION_SCALE = 0.18;
+const LION_SCALE = 0.18;                     // 보상 모델 공통 스케일 (블렌더에서 상대 크기는 미리 맞춤)
 
 const gltfLoader = new THREE.GLTFLoader();
 gltfLoader.setMeshoptDecoder(MeshoptDecoder);
-const lionReady = new Promise((resolve, reject) => {
-  gltfLoader.load('assets/models/lion_optimized.glb',
-    gltf => resolve(gltf.scene),
-    undefined,
-    err => reject(err));
-});
 
-Promise.all([landReady, lionReady]).then(([_, lion]) => {
-  // GLB 머티리얼 보정 — metalness/roughness 가 1/1 로 박혀있어서 envMap 없으면 거의 검정.
-  // 일반 동물 머티리얼로 정상 보이도록 강제 수정.
-  lion.traverse(o => {
-    if (o.isMesh && o.material && o.material.isMeshStandardMaterial) {
-      o.material.metalness = 0;
-      o.material.roughness = 0.7;
-      o.material.needsUpdate = true;
-    }
+// 8개 큰 파일 시각 품질 검증용 — 끝나면 단일 사자 로드 코드로 복원할 것
+const TEST_MODELS = [
+  'assets/models/glb_activity/zebra_pbr.glb',
+  'assets/models/glb_activity/peacock_pbr.glb',
+  'assets/models/glb_activity/ram_pbr.glb',
+  'assets/models/glb_mind/gothic_pbr.glb',
+  'assets/models/glb_mind/lotus_pbr.glb',
+  'assets/models/glb_mind/mayan_pbr.glb',
+  'assets/models/glb_restoration/willow_pbr.glb',
+  'assets/models/glb_restoration/cabin_pbr.glb',
+];
+// 지구 앞면에 격자처럼 배치 (위도, 경도 라디안)
+const TEST_POSITIONS = [
+  [ Math.PI/6, -Math.PI/3 ],
+  [ Math.PI/6,  0         ],
+  [ Math.PI/6,  Math.PI/3 ],
+  [ 0,         -Math.PI/2.5],
+  [ 0,          Math.PI/2.5],
+  [-Math.PI/6, -Math.PI/3 ],
+  [-Math.PI/6,  0         ],
+  [-Math.PI/6,  Math.PI/3 ],
+];
+function latLonToDir(lat, lon) {
+  return new THREE.Vector3(
+    Math.cos(lat) * Math.sin(lon),
+    Math.sin(lat),
+    Math.cos(lat) * Math.cos(lon)
+  );
+}
+const modelsReady = Promise.all(
+  TEST_MODELS.map(url =>
+    new Promise((resolve, reject) =>
+      gltfLoader.load(url, g => resolve(g.scene), undefined,
+        err => { console.error('로드 실패:', url, err); reject(err); }))
+  )
+);
+
+Promise.all([landReady, modelsReady]).then(([_, models]) => {
+  models.forEach((model, i) => {
+    model.traverse(o => {
+      if (o.isMesh && o.material && o.material.isMeshStandardMaterial) {
+        o.material.metalness = 0;
+        o.material.roughness = 0.7;
+        o.material.needsUpdate = true;
+      }
+    });
+    const box = new THREE.Box3().setFromObject(model);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    model.position.set(-center.x, -box.min.y, -center.z);
+
+    const wrapper = new THREE.Group();
+    wrapper.add(model);
+    wrapper.scale.setScalar(LION_SCALE);
+
+    const [lat, lon] = TEST_POSITIONS[i];
+    const dir = latLonToDir(lat, lon);
+    wrapper.position.copy(dir).multiplyScalar(EARTH_R);
+    wrapper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
+
+    earth.add(wrapper);
   });
-
-  // 모델 원점이 발이 아닐 수 있으므로 bounding box로 발 정렬
-  const box = new THREE.Box3().setFromObject(lion);
-  const center = new THREE.Vector3(); box.getCenter(center);
-  lion.position.set(-center.x, -box.min.y, -center.z);  // x/z 중앙, y 바닥=0
-
-  const wrapper = new THREE.Group();
-  wrapper.add(lion);
-  wrapper.scale.setScalar(LION_SCALE);
-
-  const dir = pickRandomLandDir();
-  wrapper.position.copy(dir).multiplyScalar(EARTH_R);
-  wrapper.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), dir);
-
-  earth.add(wrapper);  // 지구의 자식 → 자전과 함께 이동
-}).catch(err => console.error('사자 로드 실패:', err));
+}).catch(err => console.error('테스트 모델 로드 실패:', err));
 
 // ─── 인터랙션: 카메라 고정. 좌클릭/한손가락→지구 회전. 휠/핀치→줌. 우클릭·Shift+좌·두손가락→팬.
 //      자전·사용자 회전 모두 earth 자체를 회전 → 조명은 항상 절대 위치 고정.
