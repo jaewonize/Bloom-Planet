@@ -101,56 +101,56 @@ slow-terrarium/
 ## 보상 테이블
 
 ### 잘 움직이기 (20종)
-| 순서 | 아이템 | 파일명 |
-|------|--------|--------|
-| 1 | 사슴 | assets/move/deer.png |
-| 2 | 닭 | assets/move/chicken.png |
-| 3 | 양 | assets/move/sheep.png |
-| 4 | 앵무새 | assets/move/parrot.png |
-| 5 | 거북이 | assets/move/turtle.png |
-| 6 | 홍학 | assets/move/flamingo.png |
-| 7 | 기린 | assets/move/giraffe.png |
-| 8 | 공작 | assets/move/peacock.png |
-| 9 | 얼룩말 | assets/move/zebra.png |
-| 10 | 캥거루 | assets/move/kangaroo.png |
-| 11 | 곰 | assets/move/bear.png |
-| 12 | 황소 | assets/move/bull.png |
-| 13 | 산양 | assets/move/ibex.png |
-| 14 | 코끼리 | assets/move/elephant.png |
-| 15 | 치타 | assets/move/cheetah.png |
-| 16 | 독수리 | assets/move/eagle.png |
-| 17 | 흰여우 | assets/move/arctic_fox.png |
-| 18 | 사자 | assets/move/lion.png |
-| 19 | 팬더 | assets/move/panda.png |
-| 20 | 블랙팬서 | assets/move/black_panther.png |
+| 순서 | 아이템 | GLB 파일명 | 이미지 파일명 |
+|------|--------|-----------|-------------|
+| 1 | 사슴 | deer_pbr.glb | assets/move/deer.png |
+| 2 | 닭 | chicken_pbr.glb | assets/move/chicken.png |
+| 3 | 양 | sheep_pbr.glb | assets/move/sheep.png |
+| 4 | 앵무새 | parrot_pbr.glb | assets/move/parrot.png |
+| 5 | 거북이 | turtle_pbr.glb | assets/move/turtle.png |
+| 6 | 홍학 | flamingo_pbr.glb | assets/move/flamingo.png |
+| 7 | 기린 | giraffe_pbr.glb | assets/move/giraffe.png |
+| 8 | 공작 | peacock_pbr.glb | assets/move/peacock.png |
+| 9 | 얼룩말 | zebra_pbr.glb | assets/move/zebra.png |
+| 10 | 캥거루 | kangaroo_pbr.glb | assets/move/kangaroo.png |
+| 11 | 곰 | bear_pbr.glb | assets/move/bear.png |
+| 12 | 황소 | bull_pbr.glb | assets/move/bull.png |
+| 13 | 산양 | ram_pbr.glb | assets/move/ram.png |
+| 14 | 코끼리 | elephant_pbr.glb | assets/move/elephant.png |
+| 15 | 치타 | cheetah_pbr.glb | assets/move/cheetah.png |
+| 16 | 레드판다 | red_panda_pbr.glb | assets/move/red_panda.png |
+| 17 | 흰여우 | arctic_fox_pbr.glb | assets/move/arctic_fox.png |
+| 18 | 사자 | lion_pbr.glb | assets/move/lion.png |
+| 19 | 팬더 | panda_pbr.glb | assets/move/panda.png |
+| 20 | 블랙팬서 | panther_pbr.glb | assets/move/panther.png |
 
 ### 잘 쉬기 — 나무 (10종)
-| 순서 | 아이템 | 파일명 |
-|------|--------|--------|
-| 1 | 갈대 | assets/rest_tree/reed.png |
-| 2 | 대나무 | assets/rest_tree/bamboo.png |
-| 3 | 바나나 나무 | assets/rest_tree/banana_tree.png |
-| 4 | 파파야 나무 | assets/rest_tree/papaya_tree.png |
-| 5 | 야자수 | assets/rest_tree/palm_tree.png |
-| 6 | 버드나무 | assets/rest_tree/willow.png |
-| 7 | 소나무 | assets/rest_tree/pine.png |
-| 8 | 전나무 | assets/rest_tree/fir.png |
-| 9 | 도토리 나무 | assets/rest_tree/oak.png |
-| 10 | 바오밥 나무 | assets/rest_tree/baobab.png |
+| 순서 | 아이템 | GLB 파일명 | 이미지 파일명 |
+|------|--------|-----------|-------------|
+| 1 | 갈대 | cattail_pbr.glb | assets/rest_tree/cattail.png |
+| 2 | 대나무 | bamboo_pbr.glb | assets/rest_tree/bamboo.png |
+| 3 | 바나나 나무 | banana_pbr.glb | assets/rest_tree/banana_tree.png |
+| 4 | 파파야 나무 | papaya_pbr.glb | assets/rest_tree/papaya_tree.png |
+| 5 | 야자수 | palm_pbr.glb | assets/rest_tree/palm_tree.png |
+| 6 | 버드나무 | willow_pbr.glb | assets/rest_tree/willow.png |
+| 7 | 낙우송 | bald_cypress_pbr.glb | assets/rest_tree/bald_cypress.png |
+| 8 | 전나무 | tanenbaum_pbr.glb | assets/rest_tree/fir.png |
+| 9 | 도토리 나무 | acorn_pbr.glb | assets/rest_tree/oak.png |
+| 10 | 아카시아 | acacia_pbr.glb | assets/rest_tree/acacia.png |
 
 ### 잘 쉬기 — 휴식처 (10종)
-| 순서 | 아이템 | 파일명 |
-|------|--------|--------|
-| 1 | 비치볼 | assets/rest_shelter/beach_ball.png |
-| 2 | 파라솔 | assets/rest_shelter/parasol.png |
-| 3 | 캠프파이어 | assets/rest_shelter/campfire.png |
-| 4 | 해먹 | assets/rest_shelter/hammock.png |
-| 5 | 텐트 | assets/rest_shelter/tent.png |
-| 6 | 오아시스 | assets/rest_shelter/oasis.png |
-| 7 | 온천 | assets/rest_shelter/hot_spring.png |
-| 8 | 오두막 | assets/rest_shelter/cabin.png |
-| 9 | 이글루 | assets/rest_shelter/igloo.png |
-| 10 | 게르 | assets/rest_shelter/ger.png |
+| 순서 | 아이템 | GLB 파일명 | 이미지 파일명 |
+|------|--------|-----------|-------------|
+| 1 | 열기구 | balloon_pbr.glb | assets/rest_shelter/balloon.png |
+| 2 | 파라솔 | parasol_pbr.glb | assets/rest_shelter/parasol.png |
+| 3 | 캠프파이어 | campfire_pbr.glb | assets/rest_shelter/campfire.png |
+| 4 | 무지개 | rainbow_pbr.glb | assets/rest_shelter/rainbow.png |
+| 5 | 티피텐트 | teepee_pbr.glb | assets/rest_shelter/teepee.png |
+| 6 | 오아시스 | oasis_pbr.glb | assets/rest_shelter/oasis.png |
+| 7 | 온천 | spring_pbr.glb | assets/rest_shelter/hot_spring.png |
+| 8 | 오두막 | cabin_pbr.glb | assets/rest_shelter/cabin.png |
+| 9 | 폭포 | waterfall_pbr.glb | assets/rest_shelter/waterfall.png |
+| 10 | 게르 | hut_pbr.glb | assets/rest_shelter/ger.png |
 
 ### 잘 가꾸기 (미정)
 ### 잘 다스리기 (미정)
@@ -162,6 +162,7 @@ slow-terrarium/
 - [x] 점수 입력 → LED 상태 업데이트
 - [x] 보상 배치 로직
 - [x] 하단 카테고리 아이콘 제거
+- [x] GLB 파일 스케일 조정 (glb_activity_scale, glb_restoration_scale)
 - [ ] 잘 가꾸기 보상 테이블 확정
 - [ ] 잘 다스리기 보상 테이블 확정
 - [ ] 슬롯 차감 로직 설계
