@@ -1,4 +1,4 @@
-# CLAUDE.md — Slow Terrarium
+# CLAUDE.md — Bloom Planet
 
 ## 상위 컨텍스트
 
@@ -37,7 +37,7 @@
 ```
 
 ### 전체 테마 목록 (PoC A)
-- **Slow Terrarium** (지구 꾸미기) ← 이 폴더
+- **Bloom Planet** (지구 꾸미기) ← 이 폴더
 - **Slow Museum** (갤러리)
 - **Wellness Marble** (보드게임판)
 
@@ -54,9 +54,9 @@
 
 ## 파일 구조
 ```
-slow-terrarium/
+bloom-planet/
 ├── CLAUDE.md
-├── PocA_SlowTerrarium_v2.html   # 메인 파일
+├── PocA_BloomPlanet_v2.html   # 메인 파일
 └── assets/
     ├── move/                    # 잘 움직이기 이미지
     ├── rest_tree/               # 잘 쉬기 나무 이미지
