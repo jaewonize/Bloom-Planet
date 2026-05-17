@@ -531,7 +531,7 @@ Promise.all([landReady, lionReady]).then(([_, lion]) => {
 
 // ─── 추가 보상 모델 (대륙/바다 구분 + 넓은 영역 우선 배치) ───
 // 사자와 동일 패턴으로 모델 1개 배치 (지구 자식 → 자전과 함께 이동)
-function placeReward(path, ocean, scaleMul = 1, tiltX = 0, floatR = 0) {
+function placeReward(path, ocean, scaleMul = 1, tiltX = 0, floatR = 0, idle = false) {
   const gen = _placementGen;
   gltfLoader.load(path, gltf => {
     if (gen !== _placementGen) return;   // 리셋 후 도착한 이전 사이클 로드 무시
@@ -553,6 +553,14 @@ function placeReward(path, ocean, scaleMul = 1, tiltX = 0, floatR = 0) {
     if (tiltX) wrapper.rotateX(tiltX);   // 표면 접선축 기준 기울임 (다이버 = 엎드린 수영 자세)
 
     wrapper.userData.placedDir = dir;    // 리셋 시 _placedDirs 에서 정확히 제거하려고 보관
+    if (idle) {                          // 'sway'=가오리·다이버 ±10° 왕복 / 'spin'=무지개 연속회전, 공통 hop
+      wrapper.userData.idleMode = idle;
+      wrapper.userData.baseQuat = wrapper.quaternion.clone();  // 정렬+yaw(+tilt) 적용된 기준 자세
+      wrapper.userData.normal   = dir.clone();                 // 회전축 = hop 방향 = 표면 법선
+      wrapper.userData.baseDist = PLACEMENT_R + floatR;
+      wrapper.userData.phase    = Math.random() * Math.PI * 2; // 위상 분산
+      _idleModels.push(wrapper);
+    }
     earth.add(wrapper);
     _rewardWrappers.push(wrapper);
   }, undefined, err => console.error('보상 로드 실패:', path, err));
@@ -568,17 +576,26 @@ const _rewardWrappers = [];
 let _placementGen = 0;   // 리셋 시 증가 → 진행 중이던 GLB 로드 무효화
 let _rewardStep = 0;
 
+// 가오리·다이버 idle 모션: 표면 법선축 기준 ±10° 천천히 회전 + 위아래 hopping (ease)
+const _idleModels = [];
+const _idleQ = new THREE.Quaternion();   // 프레임마다 재사용 (할당 방지)
+const IDLE_ROT_MAX   = 10 * Math.PI / 180;  // 회전 진폭 ±10°
+const IDLE_ROT_SPEED = 0.5;                // 천천히
+const IDLE_HOP_AMP   = 0.03;               // hop 높이 (법선 방향)
+const IDLE_HOP_SPEED = 1.4;
+const IDLE_SPIN_SPEED = 0.45;              // 무지개: 연속 360° Y축 회전 속도 (천천히)
+
 const REWARD_BATCHES = [
   [ // 입력 1
     { path: 'assets/models/glb_activity/turtle_pbr.glb',          ocean: false, name: '거북이' },
-    { path: 'assets/models/glb_restoration/rainbow_pbr.glb',      ocean: false, name: '무지개' },
-    { path: 'assets/models/glb_appearance/manta_pbr.glb',         ocean: true,  name: '만타레이' },
+    { path: 'assets/models/glb_restoration/rainbow_pbr.glb',      ocean: false, name: '무지개', idle: 'spin' },
+    { path: 'assets/models/glb_appearance/manta_pbr.glb',         ocean: true,  name: '만타레이', idle: 'sway' },
     { path: 'assets/models/glb_mind/stonhenge_pbr.glb',           ocean: false, name: '스톤헨지' },
   ],
   [ // 입력 2
     { path: 'assets/models/glb_activity/panda_pbr.glb',           ocean: false, name: '팬더' },
     { path: 'assets/models/glb_restoration/banana_pbr.glb',       ocean: false, name: '바나나나무' },
-    { path: 'assets/models/glb_appearance/diver_pbr.glb',         ocean: true,  name: '다이버', tiltX: Math.PI / 6, floatR: 0.01 },
+    { path: 'assets/models/glb_appearance/diver_pbr.glb',         ocean: true,  name: '다이버', tiltX: Math.PI / 6, floatR: 0.01, idle: 'sway' },
   ],
   [ // 입력 3
     { path: 'assets/models/glb_restoration/bald_cypress_pbr.glb', ocean: false, name: '낙우송' },
@@ -627,6 +644,7 @@ function resetRewards() {
     disposeWrapper(w);
   });
   _rewardWrappers.length = 0;
+  _idleModels.length = 0;
   _popup.hidden = true;
 }
 
@@ -638,7 +656,7 @@ function advanceRewardDemo() {
     return;                  // 리셋엔 팝업 없음
   }
   const batch = REWARD_BATCHES[_rewardStep];
-  batch.forEach(r => placeReward(r.path, r.ocean, r.scaleMul ?? 1, r.tiltX ?? 0, r.floatR ?? 0));
+  batch.forEach(r => placeReward(r.path, r.ocean, r.scaleMul ?? 1, r.tiltX ?? 0, r.floatR ?? 0, r.idle ?? false));
   _rewardStep++;
   showRewardPopup(batch.map(r => r.name));
 }
@@ -825,6 +843,21 @@ function animate() {
     _velY *= FRICTION;
   } else if (!_isRot && (_velX !== 0 || _velY !== 0)) {
     _velX = 0; _velY = 0;  // 임계값 이하 잔재 제거
+  }
+
+  // idle: 'sway'=법선축 ±10° sin 왕복 / 'spin'=법선축 연속 360° 회전. 공통 위아래 hopping(ease)
+  if (_idleModels.length) {
+    const tt = performance.now() * 0.001;
+    for (const w of _idleModels) {
+      const u = w.userData;
+      const ang = (u.idleMode === 'spin')
+        ? tt * IDLE_SPIN_SPEED
+        : IDLE_ROT_MAX * Math.sin(tt * IDLE_ROT_SPEED + u.phase);
+      _idleQ.setFromAxisAngle(u.normal, ang);
+      w.quaternion.copy(_idleQ).multiply(u.baseQuat);
+      const lift = IDLE_HOP_AMP * (0.5 - 0.5 * Math.cos(tt * IDLE_HOP_SPEED + u.phase));
+      w.position.copy(u.normal).multiplyScalar(u.baseDist + lift);
+    }
   }
 
   earth.quaternion.copy(_earthQ);
