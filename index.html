@@ -75,6 +75,34 @@ canvas:active { cursor:grabbing; }
 .card .name { font-size: 13px; color: #666; font-weight: 600; }
 .card .score { font-size: 26px; color: #73CCA3; font-weight: 700; line-height: 1.1; }
 
+#reward-popup {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 300px;
+  background: rgba(255,255,255,0.97);
+  border-radius: 24px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.28);
+  padding: 42px 28px 32px;
+  z-index: 5;
+  text-align: center;
+}
+#reward-popup[hidden] { display: none; }
+#reward-popup-close {
+  position: absolute;
+  top: 10px; right: 12px;
+  width: 32px; height: 32px;
+  border: none; background: transparent;
+  font-size: 24px; line-height: 1; color: #aaa;
+  cursor: pointer; border-radius: 50%;
+}
+#reward-popup-close:hover { background: #f0f0f0; color: #555; }
+#reward-popup-text {
+  font-size: 18px; font-weight: 400; color: #3a3a3a;
+  line-height: 1.55; word-break: keep-all;
+}
+#reward-popup-text b { font-weight: 600; color: #73CCA3; }
+
 #sliders {
   width: 384px;
   height: 768px;
@@ -176,6 +204,7 @@ canvas:active { cursor:grabbing; }
   font-family: inherit;
 }
 .trigger-btn:hover { background: rgba(115, 204, 163, 0.12); }
+.trigger-row { display: flex; gap: 10px; align-items: center; }
 .trigger-btn:active { transform: scale(0.97); }
 </style>
 </head>
@@ -189,6 +218,10 @@ canvas:active { cursor:grabbing; }
     <div class="card"><div class="name">잘 쉬기</div><div class="score" id="card-rest">60</div></div>
     <div class="card"><div class="name">잘 가꾸기</div><div class="score" id="card-groom">48</div></div>
     <div class="card"><div class="name">잘 다스리기</div><div class="score" id="card-manage">80</div></div>
+  </div>
+  <div id="reward-popup" hidden>
+    <button id="reward-popup-close" aria-label="닫기">&times;</button>
+    <div id="reward-popup-text"></div>
   </div>
 </div>
 
@@ -216,8 +249,11 @@ canvas:active { cursor:grabbing; }
     <div id="trigger-buttons">
       <button class="trigger-btn">100번째 방문</button>
       <button class="trigger-btn">지난 한 달 간 미접속</button>
-      <button class="trigger-btn">할로윈 이벤트</button>
-      <button class="trigger-btn">동일연령 총점 평균보다 낮음</button>
+      <button class="trigger-btn">이벤트</button>
+      <div class="trigger-row">
+        <button class="trigger-btn">동일연령 총점 평균보다 낮음</button>
+        <button class="trigger-btn">높음</button>
+      </div>
       <button class="trigger-btn">잘 다스리기 20점 하락</button>
     </div>
   </div>
@@ -425,19 +461,24 @@ function brightenMat(o) {
   }
 }
 
-// 골고루 분포 — 이미 배치된 방향들과 최소 각거리 유지 (dart throwing)
+// 골고루 분포 — Mitchell best-candidate: 후보를 여러 개 뽑아, 이미 배치된
+// 것들 중 '가장 가까운 이웃'과의 거리가 최대인 후보를 선택 → 한 곳에 안 몰림.
+// (지금 데모뿐 아니라 추후 실제 보상테이블/슬라이더 연동 시에도 동일 적용)
 const _placedDirs = [];
-const SPACING_MIN_DOT = Math.cos(0.42);  // 약 24° 이내면 너무 가까움 → 거부
 function pickSpacedDir(ocean) {
-  for (let i = 0; i < 700; i++) {
-    const d = ocean ? pickRandomOceanDir() : pickRandomLandDir();
-    let ok = true;
-    for (const p of _placedDirs) { if (d.dot(p) > SPACING_MIN_DOT) { ok = false; break; } }
-    if (ok) { _placedDirs.push(d.clone()); return d; }
+  const pick = ocean ? pickRandomOceanDir : pickRandomLandDir;
+  // 반환하는 객체를 그대로 _placedDirs 에 넣음 (clone 아님) → resetRewards 에서
+  // wrapper.userData.placedDir 와 indexOf 로 정확히 찾아 제거 가능. 이후 mutate 안 함.
+  if (_placedDirs.length === 0) { const d0 = pick(); _placedDirs.push(d0); return d0; }
+  let best = null, bestNearestDot = Infinity;  // dot 작을수록 최근접 이웃과 멀리 떨어짐
+  for (let i = 0; i < 16; i++) {
+    const c = pick();
+    let nearestDot = -Infinity;
+    for (const p of _placedDirs) { const dt = c.dot(p); if (dt > nearestDot) nearestDot = dt; }
+    if (nearestDot < bestNearestDot) { bestNearestDot = nearestDot; best = c; }
   }
-  const d = ocean ? pickRandomOceanDir() : pickRandomLandDir();  // 제약 못 맞추면 그냥 배치
-  _placedDirs.push(d.clone());
-  return d;
+  _placedDirs.push(best);
+  return best;
 }
 
 const lionReady = new Promise((resolve, reject) => {
@@ -491,7 +532,9 @@ Promise.all([landReady, lionReady]).then(([_, lion]) => {
 // ─── 추가 보상 모델 (대륙/바다 구분 + 넓은 영역 우선 배치) ───
 // 사자와 동일 패턴으로 모델 1개 배치 (지구 자식 → 자전과 함께 이동)
 function placeReward(path, ocean, scaleMul = 1, tiltX = 0, floatR = 0) {
+  const gen = _placementGen;
   gltfLoader.load(path, gltf => {
+    if (gen !== _placementGen) return;   // 리셋 후 도착한 이전 사이클 로드 무시
     const m = gltf.scene;
     // castShadow 미설정 — 다수 모델 그림자맵 재렌더 GPU 과부하 방지
     m.traverse(brightenMat);
@@ -509,28 +552,96 @@ function placeReward(path, ocean, scaleMul = 1, tiltX = 0, floatR = 0) {
     wrapper.rotateY(Math.random() * Math.PI * 2);  // 법선축(=로컬 Y) 기준 랜덤 yaw — 모델들이 한 방향만 보지 않게
     if (tiltX) wrapper.rotateX(tiltX);   // 표면 접선축 기준 기울임 (다이버 = 엎드린 수영 자세)
 
+    wrapper.userData.placedDir = dir;    // 리셋 시 _placedDirs 에서 정확히 제거하려고 보관
     earth.add(wrapper);
+    _rewardWrappers.push(wrapper);
   }, undefined, err => console.error('보상 로드 실패:', path, err));
 }
 
-// land/ocean 판정은 colorData 픽셀맵(landReady) 필요 → 준비 후 배치
-landReady.then(() => {
-  const REWARDS = [
-    // 대륙
-    { path: 'assets/models/glb_restoration/rainbow_pbr.glb',       ocean: false }, // 무지개
-    { path: 'assets/models/glb_restoration/banana_pbr.glb',        ocean: false }, // 바나나 나무
-    { path: 'assets/models/glb_restoration/bald_cypress_pbr.glb',  ocean: false }, // 낙우송
-    { path: 'assets/models/glb_restoration/cabin_pbr.glb',         ocean: false, scaleMul: 0.8 }, // 캐빈 (0.8배)
-    { path: 'assets/models/glb_mind/stonhenge_pbr.glb',            ocean: false }, // 스톤헨지
-    { path: 'assets/models/glb_mind/sagrada_familia_pbr.glb',      ocean: false }, // 사그라다 파밀리아
-    { path: 'assets/models/glb_mind/pisa_pbr.glb',                 ocean: false }, // 피사
-    // 바다
-    { path: 'assets/models/glb_appearance/diver_pbr.glb',          ocean: true, tiltX: Math.PI/6, floatR: 0.01 }, // 다이버 (30° 숙인 + 바다 위에 살짝 뜸)
-    { path: 'assets/models/glb_appearance/shipwreck_pbr.glb',      ocean: true  }, // 난파선
-    { path: 'assets/models/glb_appearance/manta_pbr.glb',          ocean: true  }, // manta
-  ];
-  REWARDS.forEach(r => placeReward(r.path, r.ocean, r.scaleMul ?? 1, r.tiltX ?? 0, r.floatR ?? 0));
-});
+// ─── 입력 버튼 데모 ───
+// 처음엔 사자만. '입력' 누를 때마다: 4개 → 3개 → 3개 (누적 사자+10) → 리셋(사자만) → 반복.
+// 실제 보상테이블 연동 전, "이렇게 작동할 거예요"를 보여주는 시연용.
+let _landReady = false;
+landReady.then(() => { _landReady = true; });
+
+const _rewardWrappers = [];
+let _placementGen = 0;   // 리셋 시 증가 → 진행 중이던 GLB 로드 무효화
+let _rewardStep = 0;
+
+const REWARD_BATCHES = [
+  [ // 입력 1
+    { path: 'assets/models/glb_activity/turtle_pbr.glb',          ocean: false, name: '거북이' },
+    { path: 'assets/models/glb_restoration/rainbow_pbr.glb',      ocean: false, name: '무지개' },
+    { path: 'assets/models/glb_appearance/manta_pbr.glb',         ocean: true,  name: '만타레이' },
+    { path: 'assets/models/glb_mind/stonhenge_pbr.glb',           ocean: false, name: '스톤헨지' },
+  ],
+  [ // 입력 2
+    { path: 'assets/models/glb_activity/panda_pbr.glb',           ocean: false, name: '팬더' },
+    { path: 'assets/models/glb_restoration/banana_pbr.glb',       ocean: false, name: '바나나나무' },
+    { path: 'assets/models/glb_appearance/diver_pbr.glb',         ocean: true,  name: '다이버', tiltX: Math.PI / 6, floatR: 0.01 },
+  ],
+  [ // 입력 3
+    { path: 'assets/models/glb_restoration/bald_cypress_pbr.glb', ocean: false, name: '낙우송' },
+    { path: 'assets/models/glb_appearance/shipwreck_pbr.glb',     ocean: true,  name: '난파선' },
+    { path: 'assets/models/glb_mind/pisa_pbr.glb',                ocean: false, name: '피사의 사탑' },
+  ],
+];
+
+const _popup     = document.getElementById('reward-popup');
+const _popupText = document.getElementById('reward-popup-text');
+document.getElementById('reward-popup-close')
+  .addEventListener('click', () => { _popup.hidden = true; });
+
+// 한글 주격조사: 끝 글자에 받침 있으면 '이', 없으면 '가' (비한글은 '가')
+function subjectJosa(word) {
+  const c = word.charCodeAt(word.length - 1);
+  if (c >= 0xAC00 && c <= 0xD7A3) return ((c - 0xAC00) % 28 !== 0) ? '이' : '가';
+  return '가';
+}
+
+function showRewardPopup(names) {
+  const josa = subjectJosa(names[names.length - 1]);
+  _popupText.innerHTML = '<b>' + names.join(', ') + '</b>' + josa + ' 지구에 도착했어요';
+  _popup.hidden = false;
+}
+
+function disposeWrapper(w) {
+  w.traverse(o => {
+    if (!o.isMesh) return;
+    if (o.geometry) o.geometry.dispose();
+    const mats = Array.isArray(o.material) ? o.material : [o.material];
+    mats.forEach(m => {
+      if (!m) return;
+      for (const k in m) { const v = m[k]; if (v && v.isTexture) v.dispose(); }
+      m.dispose();
+    });
+  });
+}
+
+function resetRewards() {
+  _placementGen++;
+  _rewardWrappers.forEach(w => {
+    earth.remove(w);
+    const d = w.userData.placedDir;
+    if (d) { const i = _placedDirs.indexOf(d); if (i !== -1) _placedDirs.splice(i, 1); }
+    disposeWrapper(w);
+  });
+  _rewardWrappers.length = 0;
+  _popup.hidden = true;
+}
+
+function advanceRewardDemo() {
+  if (!_landReady) return;   // landPx 준비 전이면 무시 (보통 수 ms 내 준비)
+  if (_rewardStep >= REWARD_BATCHES.length) {
+    resetRewards();
+    _rewardStep = 0;
+    return;                  // 리셋엔 팝업 없음
+  }
+  const batch = REWARD_BATCHES[_rewardStep];
+  batch.forEach(r => placeReward(r.path, r.ocean, r.scaleMul ?? 1, r.tiltX ?? 0, r.floatR ?? 0));
+  _rewardStep++;
+  showRewardPopup(batch.map(r => r.name));
+}
 
 // ─── 인터랙션: 카메라 고정. 좌클릭/한손가락→지구 회전. 휠/핀치→줌. 우클릭·Shift+좌·두손가락→팬.
 //      자전·사용자 회전 모두 earth 자체를 회전 → 조명은 항상 절대 위치 고정.
@@ -758,7 +869,10 @@ function applyScores() {
     cardEls[id].textContent = scores[id];
   });
 }
-document.getElementById('submit-btn').addEventListener('click', applyScores);
+document.getElementById('submit-btn').addEventListener('click', () => {
+  applyScores();
+  advanceRewardDemo();
+});
 window.__scores = scores;
 </script>
 </body>
