@@ -875,5 +875,65 @@ document.getElementById('submit-btn').addEventListener('click', () => {
 });
 window.__scores = scores;
 </script>
+<script>
+/* ── 통합(WA_integration) 끼워진 모드 ──
+   부모 통합 페이지가 ?embed=1 로 이 페이지를 iframe에 띄우면:
+   · 자체 컨트롤 패널(#sliders)을 숨기고 폰 화면만 표시
+   · 부모가 postMessage로 보내는 슬라이더/입력/트리거 값을
+     기존 컨트롤(slider-*, submit-btn, .trigger-btn)에 그대로 주입
+   기존 반응 로직은 손대지 않음 → 테마를 수정·배포하면 통합 화면에 자동 반영. */
+(function () {
+  if (new URLSearchParams(location.search).get('embed') !== '1') return;
+
+  var css = document.createElement('style');
+  css.textContent =
+    'html,body{background:transparent !important;}' +
+    'body{padding:0 !important;}' +
+    'main{transform:none !important;}' +
+    '#sliders{display:none !important;}' +
+    '#canvas-wrap{box-shadow:none !important;}';
+  document.head.appendChild(css);
+
+  function setSlider(key, value) {
+    var s = document.getElementById('slider-' + key);
+    if (!s) return;
+    s.value = value;
+    s.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+  function clickTrigger(label) {
+    var want = String(label).trim();
+    var btns = document.querySelectorAll('.trigger-btn');
+    for (var i = 0; i < btns.length; i++) {
+      if (btns[i].textContent.trim() === want) { btns[i].click(); return; }
+    }
+  }
+
+  window.addEventListener('message', function (e) {
+    var d = e.data;
+    if (!d || d.source !== 'wa-integration') return;
+    if (d.type === 'slider') {
+      setSlider(d.key, d.value);
+    } else if (d.type === 'submit') {
+      if (d.scores) {
+        ['move', 'rest', 'groom', 'manage'].forEach(function (k) {
+          if (d.scores[k] != null) setSlider(k, d.scores[k]);
+        });
+      }
+      var btn = document.getElementById('submit-btn');
+      if (btn) btn.click();
+    } else if (d.type === 'trigger') {
+      clickTrigger(d.label);
+    }
+  });
+
+  function announce() {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage({ source: 'wa-theme', type: 'ready' }, '*');
+    }
+  }
+  if (document.readyState === 'complete') announce();
+  else window.addEventListener('load', announce);
+})();
+</script>
 </body>
 </html>
