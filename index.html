@@ -307,12 +307,12 @@ scene.add(sun);
 
 // 모델 전용 보조광 — layer 1 (모델 메쉬만). 지구(layer 0)는 미수신 → 지구 조도·그림자 원본 그대로.
 // directional 이라 자전 시 모델 표면 노멀이 이 고정 방향에 대해 바뀌며 명암이 동적으로 변함.
-const modelSun = new THREE.DirectionalLight(0xffffff, 2.2);
+const modelSun = new THREE.DirectionalLight(0xffffff, 0.4);
 modelSun.position.set(3, 4, 5);   // sun 과 동일 방향 → 음영 방향 일관
 modelSun.layers.set(1);
 scene.add(modelSun);
 // 모델 전용 전방향 base 광 — directional 이 안 닿는 등진 면 컴컴함 해소. layer 1 (지구 무관).
-const modelAmbient = new THREE.AmbientLight(0xffffff, 1.45);
+const modelAmbient = new THREE.AmbientLight(0xffffff, 0.0);
 modelAmbient.layers.set(1);
 scene.add(modelAmbient);
 
@@ -580,16 +580,16 @@ let _rewardStep = 0;
 const _idleModels = [];
 const _idleQ = new THREE.Quaternion();   // 프레임마다 재사용 (할당 방지)
 const IDLE_ROT_MAX   = 10 * Math.PI / 180;  // 회전 진폭 ±10°
-const IDLE_ROT_SPEED = 0.5;                // 천천히
+const IDLE_ROT_SPEED = 1.0;                // 좌우 진동 주기 (값↑ = 빠름)
 const IDLE_HOP_AMP   = 0.03;               // hop 높이 (법선 방향)
-const IDLE_HOP_SPEED = 1.4;
+const IDLE_HOP_SPEED = 2.5;                // 위아래 진동 주기 (값↑ = 빠름)
 const IDLE_SPIN_SPEED = 0.45;              // 무지개: 연속 360° Y축 회전 속도 (천천히)
 
 const REWARD_BATCHES = [
   [ // 입력 1
     { path: 'assets/models/glb_activity/turtle_pbr.glb',          ocean: false, name: '거북이' },
-    { path: 'assets/models/glb_restoration/rainbow_pbr.glb',      ocean: false, name: '무지개', idle: 'spin' },
-    { path: 'assets/models/glb_appearance/manta_pbr.glb',         ocean: true,  name: '만타레이', idle: 'sway' },
+    { path: 'assets/models/glb_restoration/rainbow_pbr.glb',      ocean: false, name: '무지개', floatR: 0.03, idle: 'spin' },
+    { path: 'assets/models/glb_appearance/manta_pbr.glb',         ocean: true,  name: '만타레이', floatR: 0.02, idle: 'sway' },
     { path: 'assets/models/glb_mind/stonhenge_pbr.glb',           ocean: false, name: '스톤헨지' },
   ],
   [ // 입력 2
