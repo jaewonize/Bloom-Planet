@@ -48,13 +48,19 @@
 점수가 오를수록 지구 위에 보상 아이템(동식물/사물)이 배치되고, 합산 점수가 지구 자전 속도에 반영됨.
 
 ## 기술 스택
-- Three.js r128 (CDN)
+- Three.js r128 (CDN) + meshopt_decoder (CDN, EXT_meshopt_compression 디코딩)
 - 순수 HTML/CSS/JS (프레임워크 없음)
 - 단일 HTML 파일
 
+## 개발 환경 (이 맥 PC에 설치됨)
+- `gltf-transform` CLI v4.3.0 — `npm install -g @gltf-transform/cli` (에셋 최적화용)
+- `gh` CLI — GitHub 인증 완료 (jaewonize 계정, HTTPS 토큰)
+- Node v26, python3 (`python` 아님 — launch.json은 python3 사용)
+- git remote는 새 이름으로 설정됨: `https://github.com/jaewonize/Bloom-Planet.git`
+
 ## 파일 구조
 ```
-slow_planet/                    # 로컬 폴더명 (GitHub repo = Bloom-Planet)
+Slow-Planet/                    # 로컬 폴더명 (~/Desktop/Slow-Planet, GitHub repo = Bloom-Planet)
 ├── CLAUDE.md
 ├── index.html                  # 메인 파일 (단일 HTML; 지구 텍스처는 인라인 base64)
 ├── .claude/launch.json         # 로컬 프리뷰 서버 (python http.server 8765)
@@ -98,8 +104,12 @@ slow_planet/                    # 로컬 폴더명 (GitHub repo = Bloom-Planet)
 - 지구맵: 원본 2912×1440을 바다 단일색 `(150,208,230)`으로 통일. 육지 판정 `isLandUV`: `g > b + 15`(초록 우세=육지). `index.html` 인라인 `colorData`와 `assets/maps/earth_color_map.png`가 동일본.
 - 보상 = GLB 모델을 지구 표면에 법선 방향으로 세워 배치 (구버전 "오렌지 디스크/20슬롯"은 폐기). 발이 표면에 닿게 `PLACEMENT_R=1.005`.
 - 분포 `pickSpacedDir`: Mitchell best-candidate(후보 16개 중 기존 배치와 최근접거리 최대인 것 선택) → 안 몰림. 리셋 시 `_placedDirs`를 사자만 남기고 비움(반복해도 골고루). **이 골고루 분포는 추후 실제 보상테이블 연동 시에도 유지할 것.**
-- 모델별 법선축 기준 랜덤 yaw (사자 제외 — 사자는 아프리카 고정 LAT 28 / LON 1).
-- 자전: earth.quaternion 자동 회전 + 스와이프 관성.
+- 모델별 법선축 기준 랜덤 yaw (사자 제외 — 사자는 아프리카 고정 LAT 28 / LON 1, facing 180° 회전).
+- 카메라: 망원 셋업 `FOV 25`, `CAM_Z 12`, `CAM_Y -0.72` (외곽 perspective 왜곡 최소화). 줌 `Z_MIN 3 ~ Z_MAX 10`.
+- 자전: `_earthQ.multiply(_spinQ)` — **local Y(지구 남북축) 기준** (premultiply 아님; 기울여도 자전축 안 흔들림). 잡고 있는 동안만 정지, 놓으면 즉시 재개.
+- 스와이프 관성: 드래그 속도 EMA 추적 → 놓으면 `FRICTION 0.94`로 감속, `VEL_STOP 0.001` 이하 정지. 자전과 합산됨.
+- 초기 회전 `_earthQInitial`: 사자(아프리카)가 화면 좌측 가장자리, 정면엔 아시아·호주. 빈 공간 탭 → 이 회전으로 리셋 + 자전 재개. (드래그 후 놓기는 리셋 아님 — 현재 위치 유지)
+- 조명: 지구는 layer 0 (ambient 0.55 / hemi 0.7 / sun 0.25 + VSM 소프트섀도우). 보상 모델은 `o.layers.enable(1)`로 layer 0+1 **둘 다** 받음 → modelSun/modelAmbient가 지구 조명에 **중첩**되니 과노출 주의. 현재 `modelSun 0.4 / modelAmbient 0`로 낮춰둠 (지구 ambient가 이미 fill 역할). 더 분리하려면 layer 격리 필요(섀도우 영향 검토).
 
 ## 보상 테이블
 
@@ -167,8 +177,25 @@ slow_planet/                    # 로컬 폴더명 (GitHub repo = Bloom-Planet)
   3. 낙우송·난파선·피사의 사탑 (3) → 사자+10
   4. 한 번 더 → 리셋(사자만) → 1번부터 반복(루프)
 - 보상 시 지구 중앙 안내 팝업: "○○가/이 지구에 도착했어요" (받침 따라 이/가 자동, 우상단 X 닫기).
-- idle 모션: 만타·다이버 = 법선축 ±10° sin 왕복 + 위아래 hop(raised-cosine ease, 진폭 0.03). 무지개 = 법선축(Y) 연속 360° 회전 + 같은 hop. 다이버 30° 숙임·floatR 0.01 유지.
+- idle 모션: 만타·다이버 = 법선축 ±10° sin 왕복 + 위아래 hop(raised-cosine ease, 진폭 0.03). 무지개 = 법선축(Y) 연속 360° 회전 + 같은 hop.
+- idle 속도 상수(공용, sway 전체 적용): `IDLE_ROT_SPEED 1.0`(좌우), `IDLE_HOP_SPEED 2.5`(위아래), `IDLE_SPIN_SPEED 0.45`(무지개 회전).
+- floatR(표면에서 띄움): 무지개 `0.03`, 만타레이 `0.02`, 다이버 `0.01`. 나머지는 0(표면 부착).
 - 배치 데이터 = `REWARD_BATCHES`. 옵션: `ocean`·`scaleMul`·`tiltX`·`floatR`·`idle`('sway'|'spin').
+
+## 에셋 최적화 워크플로우 (확립됨 — 재사용)
+원본 GLB는 개당 25~50MB(텍스처 2K PBR + 고폴리). GitHub/런타임용으로 공격적 압축.
+
+```bash
+gltf-transform optimize <in.glb> <out.glb> \
+  --texture-compress webp --texture-size 512 \
+  --simplify-ratio 0.05 --simplify-error 0.01
+```
+
+- 결과: 평균 ~750KB (40~50배 감소). 보상 80개 총 2.4GB → 59MB. 단일 파일 2MB 미만 → LFS 불필요.
+- 코드 측: `gltfLoader.setMeshoptDecoder(MeshoptDecoder)` + meshopt CDN 스크립트 필수 (EXT_meshopt_compression).
+- 시각: 화면에서 작게 보이는 보상엔 이 정도면 충분(사자·venus 검증 완료). 갤러리처럼 크게 볼 거면 `--simplify-ratio 0.1 --texture-size 1024`로 완화.
+- 배치 처리: 카테고리 폴더 순회 루프(이전 세션에서 80개 일괄 처리함). 원본은 `~/Desktop/WA Reward/...`, repo엔 최적화본만 커밋.
+- Slow Museum 조각 19개도 동일 옵션으로 처리해둠(운반용, `~/Desktop/WA Reward/Slow Museum/sculpture_glb_small/`).
 
 ## 멀티 테마 통합 (다음 단계 — 별도 세션 권장)
 3개 테마를 공용 컨트롤 패널 하나로 묶은 통합 HTML.
@@ -183,6 +210,10 @@ slow_planet/                    # 로컬 폴더명 (GitHub repo = Bloom-Planet)
 ## 주의사항
 - **file:// 더블클릭 불가**: GLB를 별도 파일로 로드 → 더블클릭하면 모델·사자 안 뜸(브라우저 보안). 반드시 로컬 서버(`.claude/launch.json`) 또는 GitHub Pages로 열 것.
 - 지구맵 변경은 손으로 다시 그린 PNG를 그대로 임베드(`colorData` 교체)만. **픽셀 dilation/외곽선 오프셋 금지(폐기됨).**
+- **저장소 이름 변경됨**: `Slow-Planet` → `Bloom-Planet`. 새 PC에서 clone/pull 시 remote가 옛 이름이면 `git remote set-url origin https://github.com/jaewonize/Bloom-Planet.git`. (이 맥 PC·집 PC 둘 다 처리 완료)
+- **로컬 프리뷰 서버**: preview_start MCP는 CWD(`/Users/ttt`) 기준이라 프로젝트 launch.json 못 찾음 → `cd ~/Desktop/Slow-Planet && python3 -m http.server 8765` 백그라운드로 직접 띄우는 게 확실. http://localhost:8765/
+- **코드 수정 후 안 보이면 캐시**: 강제 새로고침(⌘+Shift+R) 또는 개발자도구 Network 탭 "Disable cache" 켜고 작업.
+- **긴 세션은 새 세션으로**: 이 문서가 최신 상태를 담으므로, 세션이 길어져 느려지면 새 세션에서 이 CLAUDE.md 읽고 이어갈 것.
 
 ## 작업 이력
 - [x] 3D 지구 + 인라인 텍스처, 바다 단일색본 적용
@@ -192,7 +223,13 @@ slow_planet/                    # 로컬 폴더명 (GitHub repo = Bloom-Planet)
 - [x] '입력' 단계별 보상 데모(4→3→3→리셋 루프) + 안내 팝업(이/가 자동)
 - [x] idle 모션: 만타·다이버 sway / 무지개 spin + hop(ease)
 - [x] 컨트롤 패널 트리거 버튼 정리(이벤트/높음) — 3개 테마 동기화
+- [x] 보상 80개 GLB 최적화·커밋 (gltf-transform, 2.4GB→59MB)
+- [x] 망원 카메라(FOV25) + 스와이프 관성 + local축 자전
+- [x] 모델 조명 과노출 완화 (modelSun 0.4 / modelAmbient 0)
+- [x] 무지개·만타 floatR·idle 속도 튜닝
+- [x] GitHub repo Slow-Planet→Bloom-Planet, remote URL 갱신
 - [ ] 실제 보상테이블·슬라이더 점수 연동 (현재는 시연 단계 진행만)
+- [ ] 모바일 반응형 (PC 완성 후 — 단일 파일 미디어쿼리 + 패널 토글, CSS 미디어쿼리·캔버스 동적크기)
 - [ ] LED 상태 / 자전 속도 7단계 점수 연동
 - [ ] 잘 가꾸기·잘 다스리기 보상 테이블 확정
 - [ ] 멀티 테마 통합 HTML (위 계획)
