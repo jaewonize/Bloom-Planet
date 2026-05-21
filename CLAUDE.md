@@ -100,6 +100,7 @@ Slow-Planet/                    # 로컬 폴더명 (~/Desktop/Slow-Planet, GitHu
 - 점수 낮을수록 → 빠른 자전
 
 ## 그래픽 스펙 (현재 구현)
+- 캔버스(폰 화면) 크기 **360×780**. CSS `#canvas-wrap`/`#sliders`, `<canvas id="globe">` 속성, JS `const W,H` 네 곳이 함께 움직여야 함.
 - Three.js 3D 지구 구체 + 인라인 base64 색맵(`colorData`)/displacement.
 - 지구맵: 원본 2912×1440을 바다 단일색 `(150,208,230)`으로 통일. 육지 판정 `isLandUV`: `g > b + 15`(초록 우세=육지). `index.html` 인라인 `colorData`와 `assets/maps/earth_color_map.png`가 동일본.
 - 보상 = GLB 모델을 지구 표면에 법선 방향으로 세워 배치 (구버전 "오렌지 디스크/20슬롯"은 폐기). 발이 표면에 닿게 `PLACEMENT_R=1.005`.
@@ -228,6 +229,7 @@ gltf-transform optimize <in.glb> <out.glb> \
 - [x] 모델 조명 과노출 완화 (modelSun 0.4 / modelAmbient 0)
 - [x] 무지개·만타 floatR·idle 속도 튜닝
 - [x] GitHub repo Slow-Planet→Bloom-Planet, remote URL 갱신
+- [x] WA_integration용 embed 모드 (`?embed=1` 시 자체 패널 숨김 + `#canvas-wrap` 라운딩/배경/그림자 제거 + 1.012 overscan으로 부모 `.phone` 마스크 hairline 제거. 부모는 postMessage `{source:'wa-integration', type:'slider'|'submit'|'trigger', …}`로 슬라이더/입력/트리거 주입)
 - [ ] 실제 보상테이블·슬라이더 점수 연동 (현재는 시연 단계 진행만)
 - [ ] 모바일 반응형 (PC 완성 후 — 단일 파일 미디어쿼리 + 패널 토글, CSS 미디어쿼리·캔버스 동적크기)
 - [ ] LED 상태 / 자전 속도 7단계 점수 연동

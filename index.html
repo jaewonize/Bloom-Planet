@@ -38,7 +38,7 @@ main {
   pointer-events: none;
 }
 #canvas-wrap {
-  width: 384px; height: 768px;
+  width: 360px; height: 780px;
   background: #ffffff;
   border-radius: 40px;
   overflow: hidden;
@@ -104,8 +104,8 @@ canvas:active { cursor:grabbing; }
 #reward-popup-text b { font-weight: 600; color: #73CCA3; }
 
 #sliders {
-  width: 384px;
-  height: 768px;
+  width: 360px;
+  height: 780px;
   background: #ffffff;
   border-radius: 0 40px 40px 0;
   padding: 90px 28px 28px 56px;
@@ -212,7 +212,7 @@ canvas:active { cursor:grabbing; }
 <main>
 <div id="canvas-wrap">
   <div id="phone-title">Bloom Planet</div>
-  <canvas id="globe" width="384" height="768"></canvas>
+  <canvas id="globe" width="360" height="780"></canvas>
   <div id="cards">
     <div class="card"><div class="name">잘 움직이기</div><div class="score" id="card-move">72</div></div>
     <div class="card"><div class="name">잘 쉬기</div><div class="score" id="card-rest">60</div></div>
@@ -264,7 +264,7 @@ canvas:active { cursor:grabbing; }
 <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/meshoptimizer@0.20.0/meshopt_decoder.js"></script>
 <script>
-const W = 384, H = 768;
+const W = 360, H = 780;
 const canvas = document.getElementById('globe');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
 renderer.setSize(W, H);
